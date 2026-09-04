@@ -36,7 +36,7 @@ Die Seite **Profil → API-Tokens** zeigt genau diesen Block bereits mit eingese
   "mcpServers": {
     "fifty1-erp": {
       "command": "npx",
-      "args": ["-y", "github:linh-rA/fifty1-erp-mcp"],
+      "args": ["-y", "github:fifty1-com/fifty1-erp-mcp"],
       "env": {
         "FIFTY1_API_BASE_URL": "https://erp.fifty1.com/api",
         "FIFTY1_API_TOKEN": "<Token aus dem ERP>"
@@ -55,7 +55,7 @@ Die Seite **Profil → API-Tokens** zeigt genau diesen Block bereits mit eingese
 Für Arbeiten am Server selbst:
 
 ```bash
-git clone git@github.com:linh-rA/fifty1-erp-mcp.git
+git clone git@github.com:fifty1-com/fifty1-erp-mcp.git
 cd fifty1-erp-mcp
 npm install          # baut gleich mit (prepare)
 ```
