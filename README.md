@@ -1,8 +1,10 @@
 # fifty1-erp-mcp
 
-MCP-Server für das [fifty1 ERP](../fifty1-erp). Gibt einem KI-Assistenten (Claude Desktop, Claude Code, jeder MCP-Client) Zugriff auf Projekte, Projektcontrolling, Kunden, Rechnungen, Zeiteinträge und Stammdaten.
+MCP-Server für das [fifty1 ERP](../fifty1-erp). Gibt Claude (Desktop wie Code) Zugriff auf Projekte, Projektcontrolling, Kunden, Rechnungen, Zeiteinträge und Stammdaten.
 
 Der Server läuft **lokal beim Nutzer** über stdio und spricht per HTTPS mit `public/api.php` des ERP — mit einem API-Token aus dem ERP. Auf dem ERP-Server (Plesk) muss dafür nichts installiert werden.
+
+Das bindet ihn zugleich an Clients, die lokale Server starten können. **ChatGPT gehört nicht dazu**: es akzeptiert MCP nur als Remote-Connector über eine öffentlich erreichbare HTTPS-Adresse mit OAuth. Dafür bräuchte es einen zusätzlichen Endpoint samt Anmeldung — bewusst nicht gebaut.
 
 ## Einrichtung
 
