@@ -1,34 +1,21 @@
 #!/usr/bin/env node
 import "dotenv/config";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { ErpClient } from "./client.js";
-import { registerProjectTools } from "./tools/projects.js";
-import { registerCustomerTools } from "./tools/customers.js";
-import { registerInvoiceTools } from "./tools/invoices.js";
-import { registerMiscTools } from "./tools/misc.js";
+import { createServer } from "./server.js";
 
 /**
- * MCP server for the fifty1 ERP. Talks to public/api.php with a service token,
- * over stdio, so it runs locally next to the client (Claude Desktop / Claude
- * Code) and needs nothing deployed on the ERP host.
+ * Executable entry point of the MCP server. Talks to public/api.php with an API
+ * token, over stdio, so it runs locally next to the client (Claude Desktop /
+ * Claude Code) and needs nothing deployed on the ERP host.
+ *
+ * This module always starts the server: it is only ever loaded as the bin,
+ * which npm installs as a symlink — comparing import.meta.url against argv[1]
+ * to detect "am I the entry point" silently fails in exactly that case.
+ * Everything importable lives in server.ts.
  *
  * stdout belongs to the MCP protocol — every diagnostic goes to stderr.
  */
-export function createServer(client: ErpClient): McpServer {
-  const server = new McpServer({
-    name: "fifty1-erp",
-    version: "1.0.0",
-  });
-
-  registerProjectTools(server, client);
-  registerCustomerTools(server, client);
-  registerInvoiceTools(server, client);
-  registerMiscTools(server, client);
-
-  return server;
-}
-
 function readConfig(): { baseUrl: string; token: string } {
   const baseUrl = process.env.FIFTY1_API_BASE_URL;
   const token = process.env.FIFTY1_API_TOKEN;
@@ -38,7 +25,7 @@ function readConfig(): { baseUrl: string; token: string } {
       "fifty1-erp-mcp: FIFTY1_API_BASE_URL und FIFTY1_API_TOKEN müssen gesetzt sein.\n" +
         "Beispiel:\n" +
         "  FIFTY1_API_BASE_URL=https://erp.fifty1.com/api\n" +
-        "  FIFTY1_API_TOKEN=<Service-Token aus Einstellungen → API Tokens>",
+        "  FIFTY1_API_TOKEN=<Token aus dem ERP: Profil → API-Tokens>",
     );
     process.exit(1);
   }
@@ -54,11 +41,7 @@ async function main(): Promise<void> {
   console.error(`fifty1-erp-mcp verbunden (ERP: ${baseUrl})`);
 }
 
-const isEntrypoint = process.argv[1] && import.meta.url === `file://${process.argv[1]}`;
-
-if (isEntrypoint) {
-  main().catch((error) => {
-    console.error("fifty1-erp-mcp konnte nicht starten:", error);
-    process.exit(1);
-  });
-}
+main().catch((error) => {
+  console.error("fifty1-erp-mcp konnte nicht starten:", error);
+  process.exit(1);
+});

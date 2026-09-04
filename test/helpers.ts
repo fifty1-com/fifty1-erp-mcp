@@ -1,7 +1,7 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { ErpClient } from "../src/client.js";
-import { createServer } from "../src/index.js";
+import { createServer } from "../src/server.js";
 
 export interface RecordedRequest {
   url: string;
