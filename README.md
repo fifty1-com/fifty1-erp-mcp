@@ -1,10 +1,10 @@
 # fifty1-erp-mcp
 
-MCP-Server für das [fifty1 ERP](../fifty1-erp). Gibt Claude (Desktop wie Code) Zugriff auf Projekte, Projektcontrolling, Kunden, Rechnungen, Zeiteinträge und Stammdaten.
+MCP-Server für das [fifty1 ERP](../fifty1-erp). Gibt Claude (Desktop wie Code) und Codex Zugriff auf Projekte, Projektcontrolling, Kunden, Rechnungen, Zeiteinträge und Stammdaten.
 
 Der Server läuft **lokal beim Nutzer** über stdio und spricht per HTTPS mit `public/api.php` des ERP — mit einem API-Token aus dem ERP. Auf dem ERP-Server (Plesk) muss dafür nichts installiert werden.
 
-Das bindet ihn zugleich an Clients, die lokale Server starten können. **ChatGPT gehört nicht dazu**: es akzeptiert MCP nur als Remote-Connector über eine öffentlich erreichbare HTTPS-Adresse mit OAuth. Dafür bräuchte es einen zusätzlichen Endpoint samt Anmeldung — bewusst nicht gebaut.
+Das bindet ihn zugleich an Clients, die lokale Server starten können — Claude Desktop, Claude Code und Codex tun das. **ChatGPT gehört nicht dazu**: es akzeptiert MCP nur als Remote-Connector über eine öffentlich erreichbare HTTPS-Adresse mit OAuth. Dafür bräuchte es einen zusätzlichen Endpoint samt Anmeldung — bewusst nicht gebaut.
 
 ## Einrichtung
 
@@ -28,7 +28,7 @@ In beiden Fällen wird der Token nur einmal angezeigt.
 
 ### 2. In den MCP-Client eintragen
 
-Die Seite **Profil → API-Tokens** zeigt genau diesen Block bereits mit eingesetztem Token und der richtigen Base-URL — von dort kopieren spart das Ausfüllen.
+Die Seite **Profil → API-Tokens** zeigt beide Blöcke bereits mit eingesetztem Token und der richtigen Base-URL — von dort kopieren spart das Ausfüllen.
 
 **Claude Desktop:** Einstellungen → Entwickler → Konfiguration bearbeiten (`claude_desktop_config.json`).
 **Claude Code:** `.mcp.json` im Projektverzeichnis.
@@ -47,6 +47,20 @@ Die Seite **Profil → API-Tokens** zeigt genau diesen Block bereits mit eingese
   }
 }
 ```
+
+**Codex:** in `~/.codex/config.toml` ergänzen (TOML statt JSON):
+
+```toml
+[mcp_servers.fifty1-erp]
+command = "npx"
+args = ["-y", "github:fifty1-com/fifty1-erp-mcp"]
+
+[mcp_servers.fifty1-erp.env]
+FIFTY1_API_BASE_URL = "https://erp.fifty1.com/api"
+FIFTY1_API_TOKEN = "<Token aus dem ERP>"
+```
+
+Bei Codex muss unter `command` meist der vollständige Pfad zu `npx` stehen (`which npx`, z.B. `/Users/name/.nvm/versions/node/v24.18.1/bin/npx`).
 
 `npx` holt das Repo beim ersten Start, baut es (`prepare`) und startet den Server — es muss nichts geklont oder installiert werden. Voraussetzung ist Lesezugriff auf das Repo; auf privaten Repos braucht der Rechner hinterlegte GitHub-Zugangsdaten (SSH-Key oder `gh auth login`).
 
