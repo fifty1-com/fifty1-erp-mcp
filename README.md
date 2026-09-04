@@ -2,20 +2,27 @@
 
 MCP-Server für das [fifty1 ERP](../fifty1-erp). Gibt einem KI-Assistenten (Claude Desktop, Claude Code, jeder MCP-Client) Zugriff auf Projekte, Projektcontrolling, Kunden, Rechnungen, Zeiteinträge und Stammdaten.
 
-Der Server läuft **lokal beim Nutzer** über stdio und spricht per HTTPS mit `public/api.php` des ERP — mit einem Service-API-Token. Auf dem ERP-Server (Plesk) muss dafür nichts installiert werden.
+Der Server läuft **lokal beim Nutzer** über stdio und spricht per HTTPS mit `public/api.php` des ERP — mit einem API-Token aus dem ERP. Auf dem ERP-Server (Plesk) muss dafür nichts installiert werden.
 
 ## Einrichtung
 
-### 1. Service-Token im ERP anlegen
+### 1. Token im ERP anlegen
 
-Im ERP unter **Einstellungen → API Tokens** einen Token erstellen und **nur die Berechtigungen vergeben, die tatsächlich gebraucht werden**. Ein Token ohne explizite Auswahl bekommt Vollzugriff — das ist selten gewollt.
+**Der übliche Weg — persönlicher Token:** Im ERP unter **Profil → API-Tokens** einen Token erstellen (z.B. „Claude"). Dort steht auch eine fertige, bereits ausgefüllte Konfiguration zum Kopieren.
 
-| Zweck | Benötigte Berechtigungen |
+Ein persönlicher Token darf über die API genau das, was sein Besitzer auch im ERP darf — die `api.*`-Berechtigungen werden auf die Rollenrechte gemappt. Zwei Punkte, die dabei auffallen können:
+
+- Wo es ein `_all`-Recht gibt, wird es verlangt (`projects.view_all` für `list_projects`). Wer nur `projects.view_own` hat, bekommt `403`, weil die Endpoints nicht zeilenweise gefiltert sind.
+- `list_invoices` braucht beide Blickrichtungen: `invoices.view_ar_all` **und** `invoices.view_er_all`.
+
+**Für Automatisierungen — Service-Token:** Unter **Einstellungen → API Tokens** (braucht `settings.edit`) mit explizit ausgewählten `api.*`-Berechtigungen. Sinnvoll für n8n und ähnliche Dienste, die keinem Mitarbeiter gehören. Ein Token ohne Auswahl bekommt Vollzugriff — das ist selten gewollt.
+
+| Zweck | Berechtigungen (Service-Token) |
 |---|---|
 | Nur lesen | `api.projects.read`, `api.customers.read`, `api.invoices.read`, `api.timeentries.read`, `api.budgets.read`, `api.employees.read`, `api.expenses.read`, `api.projects.team.read`, `api.projects.milestones.read`, `api.projects.resourceplanning.read`, `api.projects.controlling.read` |
 | Zusätzlich schreiben | `api.projects.update`, `api.projects.team.manage`, `api.projects.milestones.manage`, `api.projects.resourceplanning.manage`, `api.expenses.create`, `api.expenses.update`, `api.customers.create`, `api.customers.update`, `api.invoices.update`, `api.projects.create` |
 
-Der Token wird nur einmal angezeigt.
+In beiden Fällen wird der Token nur einmal angezeigt.
 
 ### 2. Server bauen
 
@@ -25,6 +32,8 @@ npm run build
 ```
 
 ### 3. Im MCP-Client eintragen
+
+Die Seite **Profil → API-Tokens** im ERP zeigt diesen Block bereits mit eingesetztem Token und der richtigen Base-URL an — von dort kopieren spart das Ausfüllen.
 
 **Claude Desktop** (`claude_desktop_config.json`) bzw. **Claude Code** (`.mcp.json`):
 
@@ -36,7 +45,7 @@ npm run build
       "args": ["/absoluter/pfad/zu/fifty1-erp-mcp/dist/index.js"],
       "env": {
         "FIFTY1_API_BASE_URL": "https://erp.fifty1.com/api",
-        "FIFTY1_API_TOKEN": "<Service-Token>"
+        "FIFTY1_API_TOKEN": "<Token aus dem ERP>"
       }
     }
   }
@@ -81,6 +90,7 @@ Alternativ lassen sich beide Werte in einer `.env` im Projektverzeichnis setzen 
 - **Beträge tragen immer eine Währung**, IDs immer ein Label (`P-2026-4711 — Website Redesign`).
 - **Zeiteinträge brauchen einen Filter.** Mindestens `employee_id`, `project_id` oder ein Zeitraum; der Zeitraum ist auf 92 Tage begrenzt.
 - **Nur AR-Rechnungen** können den Status wechseln. Eingangsrechnungen lehnt das ERP ab, weil deren Workflow an eine Benutzersitzung gebunden ist.
+- **Ein `403` ist meistens kein Fehler des Servers**, sondern eine fehlende Berechtigung: Bei einem persönlichen Token entscheiden die Rollen im ERP, bei einem Service-Token die beim Anlegen gesetzte Auswahl. Die Meldung nennt den fehlenden Slug.
 
 ## Entwicklung
 
