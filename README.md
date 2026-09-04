@@ -24,25 +24,19 @@ Ein persönlicher Token darf über die API genau das, was sein Besitzer auch im 
 
 In beiden Fällen wird der Token nur einmal angezeigt.
 
-### 2. Server bauen
+### 2. In den MCP-Client eintragen
 
-```bash
-npm install
-npm run build
-```
+Die Seite **Profil → API-Tokens** zeigt genau diesen Block bereits mit eingesetztem Token und der richtigen Base-URL — von dort kopieren spart das Ausfüllen.
 
-### 3. Im MCP-Client eintragen
-
-Die Seite **Profil → API-Tokens** im ERP zeigt diesen Block bereits mit eingesetztem Token und der richtigen Base-URL an — von dort kopieren spart das Ausfüllen.
-
-**Claude Desktop** (`claude_desktop_config.json`) bzw. **Claude Code** (`.mcp.json`):
+**Claude Desktop:** Einstellungen → Entwickler → Konfiguration bearbeiten (`claude_desktop_config.json`).
+**Claude Code:** `.mcp.json` im Projektverzeichnis.
 
 ```json
 {
   "mcpServers": {
     "fifty1-erp": {
-      "command": "node",
-      "args": ["/absoluter/pfad/zu/fifty1-erp-mcp/dist/index.js"],
+      "command": "npx",
+      "args": ["-y", "github:linh-rA/fifty1-erp-mcp"],
       "env": {
         "FIFTY1_API_BASE_URL": "https://erp.fifty1.com/api",
         "FIFTY1_API_TOKEN": "<Token aus dem ERP>"
@@ -52,7 +46,21 @@ Die Seite **Profil → API-Tokens** im ERP zeigt diesen Block bereits mit einges
 }
 ```
 
-Alternativ lassen sich beide Werte in einer `.env` im Projektverzeichnis setzen (siehe `.env.example`) — praktisch für die lokale Entwicklung gegen `http://localhost:8080/api`.
+`npx` holt das Repo beim ersten Start, baut es (`prepare`) und startet den Server — es muss nichts geklont oder installiert werden. Voraussetzung ist Lesezugriff auf das Repo; auf privaten Repos braucht der Rechner hinterlegte GitHub-Zugangsdaten (SSH-Key oder `gh auth login`).
+
+**Wenn Claude den Server nicht startet** (`spawn npx ENOENT`): Programme mit Fenster erben unter macOS nicht den PATH der Kommandozeile, deshalb findet Claude Desktop ein über nvm installiertes Node nicht. Vollständigen Pfad mit `which npx` ermitteln und statt `"npx"` eintragen. In Claude Code tritt das nicht auf.
+
+### Alternative: lokale Kopie
+
+Für Arbeiten am Server selbst:
+
+```bash
+git clone git@github.com:linh-rA/fifty1-erp-mcp.git
+cd fifty1-erp-mcp
+npm install          # baut gleich mit (prepare)
+```
+
+Dann in der Konfiguration `"command": "node"` und `"args": ["/absoluter/pfad/zu/fifty1-erp-mcp/dist/index.js"]` verwenden. Beide Werte lassen sich alternativ in einer `.env` setzen (siehe `.env.example`) — praktisch gegen eine lokale ERP-Instanz auf `http://localhost:8080/api`.
 
 ## Tools
 
