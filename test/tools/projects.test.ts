@@ -94,6 +94,50 @@ describe("project tools", () => {
     expect(request.body).toEqual({ status: "aktiv", budget_planned: 25000 });
   });
 
+  it("forwards the intern and Rueckstellung fields", async () => {
+    ctx.erp.reply({ project: { label: "P-1 — Eins", name: "Eins" }, changed: {} });
+
+    await ctx.client.callTool({
+      name: "update_project",
+      arguments: {
+        project_id: 156,
+        intern: true,
+        rueckstellung_gebildet: true,
+        rueckstellung_betrag: 1234.56,
+      },
+    });
+
+    expect(ctx.erp.requests[0].body).toEqual({
+      intern: true,
+      rueckstellung_gebildet: true,
+      rueckstellung_betrag: 1234.56,
+    });
+  });
+
+  it("lets a Rueckstellung be dissolved by nulling the amount", async () => {
+    ctx.erp.reply({ project: { label: "P-1 — Eins", name: "Eins" }, changed: {} });
+
+    await ctx.client.callTool({
+      name: "update_project",
+      arguments: { project_id: 156, rueckstellung_gebildet: false, rueckstellung_betrag: null },
+    });
+
+    expect(ctx.erp.requests[0].body).toEqual({
+      rueckstellung_gebildet: false,
+      rueckstellung_betrag: null,
+    });
+  });
+
+  it("rejects a negative Rueckstellung before making a request", async () => {
+    const result = await ctx.client.callTool({
+      name: "update_project",
+      arguments: { project_id: 156, rueckstellung_betrag: -1 },
+    });
+
+    expect(isError(result)).toBe(true);
+    expect(ctx.erp.requests).toHaveLength(0);
+  });
+
   it("relays a rejected business rule verbatim", async () => {
     ctx.erp.reply({ error: 'Phase kann nur bei Status "Lead" geändert werden' }, 422);
 
