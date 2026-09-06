@@ -63,6 +63,12 @@ export function registerProjectTools(server: McpServer, client: ErpClient): void
         purchase_order_number: z.string().nullable().optional(),
         description: z.string().optional(),
         notes: z.string().optional(),
+        intern: z.boolean().optional()
+          .describe("Internes Projekt - aus Umsatz- und Controlling-Auswertungen ausgeschlossen"),
+        rueckstellung_gebildet: z.boolean().optional()
+          .describe("Rechnung wurde in einer frueheren Periode gestellt, die Leistung steht noch aus"),
+        rueckstellung_betrag: z.number().min(0).nullable().optional()
+          .describe("Rueckstellungsbetrag in EUR"),
       },
     },
     guard(async ({ project_id, ...body }) => {
