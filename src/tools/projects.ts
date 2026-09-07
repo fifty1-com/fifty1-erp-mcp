@@ -86,8 +86,9 @@ export function registerProjectTools(server: McpServer, client: ErpClient): void
     {
       title: "Projektcontrolling (Soll/Ist)",
       description:
-        "Soll/Ist-Kennzahlen eines Projekts: geplante vs. geleistete Stunden, Arbeitskosten, Umsatz, " +
-        "Gesamtkosten, Deckungsbeitrag 1, realer Tagessatz und Budgetverbrauch.",
+        "Soll/Ist-Kennzahlen eines Projekts: geplante vs. geleistete Stunden, Umsatz, externe Kosten " +
+        "(ER + Projektaufwände), Deckungsbeitrag 1, realer Tagessatz und Budgetverbrauch. " +
+        "Personalkosten sind Fixkosten und daher nicht in den Kosten und im DB1 enthalten.",
       inputSchema: { project_id: projectId },
     },
     guard(async ({ project_id }) => {
@@ -95,7 +96,7 @@ export function registerProjectTools(server: McpServer, client: ErpClient): void
 
       const summary = [
         `${data.project.project_number} — ${data.project.name}`,
-        `Umsatz ${money(data.revenue)}, Kosten ${money(data.costs.total)}, DB1 ${money(data.deckungsbeitrag_1)}`,
+        `Umsatz ${money(data.revenue)}, externe Kosten ${money(data.costs.total)}, DB1 ${money(data.deckungsbeitrag_1)}`,
         `Stunden geplant ${data.hours.planned}, geleistet ${data.hours.actual_total}`,
         `Budget (${data.budget.basis}) ${money(data.budget.planned)} — verbraucht ${percent(data.budget.consumed_pct)}`,
         `Realer Tagessatz ${money(data.realer_tagessatz)}`,
