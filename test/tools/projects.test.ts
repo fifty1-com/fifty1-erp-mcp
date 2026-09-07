@@ -177,6 +177,7 @@ describe("project tools", () => {
     );
 
     expect(text).toContain("P-2026-8945 — TransformationCamp");
+    expect(text).toContain("externe Kosten");
     expect(text).toMatch(/€\s?26\.380,64/);
     expect(text).toContain("75,4 %");
   });

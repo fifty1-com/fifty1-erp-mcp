@@ -91,7 +91,7 @@ Dann in der Konfiguration `"command": "node"` und `"args": ["/absoluter/pfad/zu/
 ### Projektcontrolling
 | Tool | Zweck |
 |---|---|
-| `get_project_controlling` | Soll/Ist: Stunden, Umsatz, Kosten, DB1, Tagessatz, Budgetverbrauch |
+| `get_project_controlling` | Soll/Ist: Stunden, Umsatz, externe Kosten (ER + Aufwände), DB1, Tagessatz, Budgetverbrauch |
 | `get_project_team` / `add_project_team_member` / `update_project_team_member` / `remove_project_team_member` | Teamzusammensetzung |
 | `get_project_milestones` / `create_project_milestone` / `update_project_milestone` | Abrechnungsmeilensteine inkl. Rechnungsverknüpfung |
 | `get_project_resource_planning` / `set_project_resource_planning` / `delete_project_resource_planning` | Monatliche Ressourcenplanung (Soll neben Ist) |
