@@ -7,20 +7,38 @@ import { ErpClient, ErpError } from "../src/client.js";
  * survive untouched.
  */
 describe("ErpClient error mapping", () => {
-  function clientWith(status: number, body: unknown) {
+  function clientWith(status: number, body: unknown, credential?: "api-token" | "oauth") {
     const fetchImpl = (async () =>
       new Response(JSON.stringify(body), {
         status,
         headers: { "Content-Type": "application/json" },
       })) as unknown as typeof fetch;
 
-    return new ErpClient({ baseUrl: "https://erp.example.test/api", token: "t", fetchImpl });
+    return new ErpClient({ baseUrl: "https://erp.example.test/api", token: "t", fetchImpl, credential });
   }
 
   it("names the config problem on 401", async () => {
     const client = clientWith(401, { error: "Invalid or expired API token" });
 
     await expect(client.get("/projects")).rejects.toThrowError(/FIFTY1_API_TOKEN/);
+  });
+
+  it("asks an OAuth user to log in again on 401 instead of pointing at a config variable", async () => {
+    const client = clientWith(401, { error: "Invalid or expired API token" }, "oauth");
+
+    const error = await client.get("/projects").catch((e) => e as ErpError);
+
+    expect(error.message).toMatch(/neu anmelden/);
+    expect(error.message).not.toContain("FIFTY1_API_TOKEN");
+  });
+
+  it("points an OAuth user at their role on 403, keeping the slug", async () => {
+    const client = clientWith(403, { error: "Permission denied: api.projects.update" }, "oauth");
+
+    const error = await client.get("/projects").catch((e) => e as ErpError);
+
+    expect(error.message).toMatch(/api\.projects\.update.*Rolle/s);
+    expect(error.message).not.toContain("Einstellungen → API Tokens");
   });
 
   it("keeps the missing permission slug on 403", async () => {

@@ -19,9 +19,16 @@ export class ErpError extends Error {
   }
 }
 
+/**
+ * Where the bearer token came from. Only changes what a 401/403 tells the user
+ * to do: fix the configured API token, or log in again / ask for a role.
+ */
+export type ErpCredential = "api-token" | "oauth";
+
 export interface ErpClientOptions {
   baseUrl: string;
   token: string;
+  credential?: ErpCredential;
   timeoutMs?: number;
   fetchImpl?: typeof fetch;
 }
@@ -31,12 +38,14 @@ const DEFAULT_TIMEOUT_MS = 15_000;
 export class ErpClient {
   private readonly baseUrl: string;
   private readonly token: string;
+  private readonly credential: ErpCredential;
   private readonly timeoutMs: number;
   private readonly fetchImpl: typeof fetch;
 
   constructor(options: ErpClientOptions) {
     this.baseUrl = options.baseUrl.replace(/\/+$/, "");
     this.token = options.token;
+    this.credential = options.credential ?? "api-token";
     this.timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
     this.fetchImpl = options.fetchImpl ?? fetch;
   }
@@ -83,7 +92,7 @@ export class ErpClient {
     const payload = text ? safeParse(text) : null;
 
     if (!response.ok) {
-      throw toErpError(response.status, payload, text);
+      throw toErpError(response.status, payload, text, this.credential);
     }
 
     return payload as T;
@@ -98,21 +107,30 @@ function safeParse(text: string): unknown {
   }
 }
 
-function toErpError(status: number, payload: unknown, rawText: string): ErpError {
+function toErpError(
+  status: number,
+  payload: unknown,
+  rawText: string,
+  credential: ErpCredential,
+): ErpError {
   const body = (payload ?? {}) as { error?: string; message?: string; details?: unknown };
   const erpMessage = body.error ?? body.message ?? rawText.slice(0, 300);
 
   switch (status) {
     case 401:
       return new ErpError(
-        "ERP-Authentifizierung fehlgeschlagen. FIFTY1_API_TOKEN prüfen (gültig? nicht widerrufen?).",
+        credential === "oauth"
+          ? "ERP-Anmeldung abgelaufen oder widerrufen. Die Verbindung im MCP-Client neu anmelden."
+          : "ERP-Authentifizierung fehlgeschlagen. FIFTY1_API_TOKEN prüfen (gültig? nicht widerrufen?).",
         status,
       );
     case 403:
       // The ERP names the exact permission slug — surfacing it tells the
       // operator precisely which scope the token is missing.
       return new ErpError(
-        `${erpMessage}. Der verwendete API-Token hat diese Berechtigung nicht — im ERP unter Einstellungen → API Tokens ergänzen.`,
+        credential === "oauth"
+          ? `${erpMessage}. Der angemeldete ERP-Benutzer hat diese Berechtigung nicht — sie hängt an seiner Rolle im ERP.`
+          : `${erpMessage}. Der verwendete API-Token hat diese Berechtigung nicht — im ERP unter Einstellungen → API Tokens ergänzen.`,
         status,
       );
     case 404:
