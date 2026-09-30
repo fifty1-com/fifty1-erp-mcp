@@ -1,21 +1,46 @@
 # fifty1-erp-mcp
 
-MCP-Server für das [fifty1 ERP](../fifty1-erp). Gibt Claude (Desktop wie Code) und Codex Zugriff auf Projekte, Projektcontrolling, Kunden, Rechnungen, Zeiteinträge und Stammdaten.
+MCP-Server für das [fifty1 ERP](../fifty1-erp). Gibt Claude (claude.ai, Desktop, Code), ChatGPT und Codex Zugriff auf Projekte, Projektcontrolling, Kunden, Rechnungen, Zeiteinträge und Stammdaten.
 
-Der Server läuft **lokal beim Nutzer** über stdio und spricht per HTTPS mit `public/api.php` des ERP — mit einem API-Token aus dem ERP. Auf dem ERP-Server (Plesk) muss dafür nichts installiert werden.
+Es gibt zwei Wege, den Server zu nutzen:
 
-Das bindet ihn zugleich an Clients, die lokale Server starten können — Claude Desktop, Claude Code und Codex tun das. **ChatGPT gehört nicht dazu**: es akzeptiert MCP nur als Remote-Connector über eine öffentlich erreichbare HTTPS-Adresse mit OAuth. Dafür bräuchte es einen zusätzlichen Endpoint samt Anmeldung — bewusst nicht gebaut.
+- **Remote-Connector (empfohlen):** Der Server läuft auf dem ERP-Host unter `https://erp.fifty1.com/mcp`. Man trägt nur die URL ein und meldet sich im Browser beim ERP an — kein Token, keine lokale Installation. Funktioniert mit claude.ai, Claude Desktop, ChatGPT und Claude Code.
+- **Lokal mit API-Token:** Der Server läuft über stdio auf dem eigenen Rechner und spricht mit einem API-Token aus dem ERP. Für Clients ohne Remote-MCP, für Automatisierungen und für die Arbeit am Server selbst.
 
-## Einrichtung
+## Einrichtung als Remote-Connector
 
-### 1. Token im ERP anlegen
+Connector-URL: **`https://erp.fifty1.com/mcp`**
 
-**Der übliche Weg — persönlicher Token:** Im ERP unter **Profil → API-Tokens** einen Token erstellen (z.B. „Claude"). Dort steht auch eine fertige, bereits ausgefüllte Konfiguration zum Kopieren.
+**claude.ai / Claude Desktop:** Einstellungen → Connectors → **Add custom connector**, Name z.B. „fifty1 ERP", URL eintragen. Beim Verbinden öffnet sich das ERP-Login; mit Passkey oder Passwort + TOTP anmelden und den Zugriff bestätigen. In claude.ai angelegte Connectors stehen auch in Claude Desktop zur Verfügung.
 
-Ein persönlicher Token darf über die API genau das, was sein Besitzer auch im ERP darf — die `api.*`-Berechtigungen werden auf die Rollenrechte gemappt. Zwei Punkte, die dabei auffallen können:
+**ChatGPT:** Einstellungen → Connectors (bzw. Apps) → neuen Connector anlegen, URL eintragen, Authentifizierung **OAuth**. Die Anmeldung läuft wie oben im Browser über das ERP. Je nach ChatGPT-Plan muss dafür der Entwicklermodus aktiviert sein.
+
+**Claude Code:**
+
+```bash
+claude mcp add --transport http fifty1-erp https://erp.fifty1.com/mcp
+```
+
+Danach in Claude Code `/mcp` aufrufen, `fifty1-erp` wählen und authentifizieren — der Browser öffnet das ERP-Login.
+
+Der Client verwaltet die Anmeldung selbst und erneuert sie bei Bedarf. Wird der Zugriff im ERP widerrufen, greift das spätestens nach einer Minute.
+
+## Berechtigungen
+
+Ein Remote-Connector darf genau das, was der angemeldete Mitarbeiter auch im ERP darf — er verhält sich wie ein persönlicher Token: Die `api.*`-Berechtigungen der Endpoints werden auf die Rollenrechte gemappt. Zwei Punkte, die dabei auffallen können:
 
 - Wo es ein `_all`-Recht gibt, wird es verlangt (`projects.view_all` für `list_projects`). Wer nur `projects.view_own` hat, bekommt `403`, weil die Endpoints nicht zeilenweise gefiltert sind.
 - `list_invoices` braucht beide Blickrichtungen: `invoices.view_ar_all` **und** `invoices.view_er_all`.
+
+Betrieb, Apache-Konfiguration und Fehlersuche auf dem Server: [`docs/deployment.md`](docs/deployment.md).
+
+## Alternative: lokal mit API-Token
+
+Der Server läuft dabei über stdio auf dem eigenen Rechner und spricht per HTTPS mit `public/api.php` des ERP. Das setzt einen Client voraus, der lokale Server starten kann — Claude Desktop, Claude Code und Codex tun das.
+
+### 1. Token im ERP anlegen
+
+**Persönlicher Token:** Im ERP unter **Profil → API-Tokens** einen Token erstellen (z.B. „Claude"). Dort steht auch eine fertige, bereits ausgefüllte Konfiguration zum Kopieren. Er hat dieselben Rechte wie ein Remote-Connector (siehe [Berechtigungen](#berechtigungen)).
 
 **Für Automatisierungen — Service-Token:** Unter **Einstellungen → API Tokens** (braucht `settings.edit`) mit explizit ausgewählten `api.*`-Berechtigungen. Sinnvoll für n8n und ähnliche Dienste, die keinem Mitarbeiter gehören. Ein Token ohne Auswahl bekommt Vollzugriff — das ist selten gewollt.
 
@@ -66,7 +91,7 @@ Bei Codex muss unter `command` meist der vollständige Pfad zu `npx` stehen (`wh
 
 **Wenn Claude den Server nicht startet** (`spawn npx ENOENT`): Programme mit Fenster erben unter macOS nicht den PATH der Kommandozeile, deshalb findet Claude Desktop ein über nvm installiertes Node nicht. Vollständigen Pfad mit `which npx` ermitteln und statt `"npx"` eintragen. In Claude Code tritt das nicht auf.
 
-### Alternative: lokale Kopie
+### Lokale Kopie
 
 Für Arbeiten am Server selbst:
 
@@ -114,7 +139,7 @@ Dann in der Konfiguration `"command": "node"` und `"args": ["/absoluter/pfad/zu/
 - **Beträge tragen immer eine Währung**, IDs immer ein Label (`P-2026-4711 — Website Redesign`).
 - **Zeiteinträge brauchen einen Filter.** Mindestens `employee_id`, `project_id` oder ein Zeitraum; der Zeitraum ist auf 92 Tage begrenzt.
 - **Nur AR-Rechnungen** können den Status wechseln. Eingangsrechnungen lehnt das ERP ab, weil deren Workflow an eine Benutzersitzung gebunden ist.
-- **Ein `403` ist meistens kein Fehler des Servers**, sondern eine fehlende Berechtigung: Bei einem persönlichen Token entscheiden die Rollen im ERP, bei einem Service-Token die beim Anlegen gesetzte Auswahl. Die Meldung nennt den fehlenden Slug.
+- **Ein `403` ist meistens kein Fehler des Servers**, sondern eine fehlende Berechtigung: Beim Remote-Connector und bei einem persönlichen Token entscheiden die Rollen im ERP, bei einem Service-Token die beim Anlegen gesetzte Auswahl. Die Meldung nennt den fehlenden Slug.
 
 ## Entwicklung
 
@@ -122,6 +147,7 @@ Dann in der Konfiguration `"command": "node"` und `"args": ["/absoluter/pfad/zu/
 npm test          # Vitest
 npm run typecheck
 npm run build
+npm run start:http   # Remote-Modus lokal, Variablen siehe .env.example
 ```
 
 ### Contributing

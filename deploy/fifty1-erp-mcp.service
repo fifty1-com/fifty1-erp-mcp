@@ -1,0 +1,34 @@
+# systemd-Unit für den Remote-MCP-Server (Streamable HTTP + OAuth).
+# Installation und Hintergründe: docs/deployment.md
+#
+#   sudo cp deploy/fifty1-erp-mcp.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now fifty1-erp-mcp
+
+[Unit]
+Description=fifty1 ERP MCP-Server (Remote, OAuth)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=fifty1-mcp
+Group=fifty1-mcp
+WorkingDirectory=/opt/fifty1-erp-mcp
+# MCP_PUBLIC_URL, FIFTY1_API_BASE_URL, PORT, HOST
+EnvironmentFile=/etc/fifty1-erp-mcp.env
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/node dist/http.js
+Restart=always
+RestartSec=5
+# Der Server fährt bei SIGTERM geordnet herunter und wartet höchstens 10 s.
+TimeoutStopSec=15
+
+# Der Server braucht nur Netzwerk und Lesezugriff auf sein Verzeichnis.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

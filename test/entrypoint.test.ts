@@ -5,10 +5,13 @@ import { readFileSync } from "node:fs";
  * The bin is installed as a symlink by npm (npx, global installs), so the entry
  * point must not decide whether to start by comparing import.meta.url against
  * process.argv[1] — that comparison fails there, the server never starts, and
- * the client only sees "Connection closed".
+ * the client only sees "Connection closed". The same holds for the HTTP bin.
  */
-describe("executable entry point", () => {
-  const source = readFileSync(new URL("../src/index.ts", import.meta.url), "utf8");
+describe.each([
+  { file: "index.ts", importable: "./server.js", exported: "export function createServer" },
+  { file: "http.ts", importable: "./httpApp.js", exported: "export function createHttpApp" },
+])("executable entry point $file", ({ file, importable, exported }) => {
+  const source = readFileSync(new URL(`../src/${file}`, import.meta.url), "utf8");
 
   it("starts unconditionally instead of guessing whether it is the entry point", () => {
     expect(source).not.toContain("import.meta.url ===");
@@ -16,7 +19,11 @@ describe("executable entry point", () => {
   });
 
   it("keeps the importable server out of the executable module", () => {
-    expect(source).toContain('from "./server.js"');
-    expect(source).not.toContain("export function createServer");
+    expect(source).toContain(`from "${importable}"`);
+    expect(source).not.toContain(exported);
+  });
+
+  it("is directly executable by node", () => {
+    expect(source.startsWith("#!/usr/bin/env node\n")).toBe(true);
   });
 });
