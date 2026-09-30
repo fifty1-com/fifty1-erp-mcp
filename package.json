@@ -1,10 +1,11 @@
 {
   "name": "fifty1-erp-mcp",
   "version": "1.0.0",
-  "description": "MCP server for the fifty1 ERP: projects, project controlling, customers, invoices and time entries",
+  "description": "MCP server for the fifty1 ERP (stdio with an API token, or remote Streamable HTTP with OAuth): projects, project controlling, customers, invoices and time entries",
   "type": "module",
   "bin": {
-    "fifty1-erp-mcp": "dist/index.js"
+    "fifty1-erp-mcp": "dist/index.js",
+    "fifty1-erp-mcp-http": "dist/http.js"
   },
   "main": "dist/index.js",
   "files": [
@@ -14,6 +15,7 @@
     "prepare": "tsc",
     "build": "tsc",
     "start": "node dist/index.js",
+    "start:http": "node dist/http.js",
     "dev": "tsc --watch",
     "test": "vitest run",
     "test:watch": "vitest",

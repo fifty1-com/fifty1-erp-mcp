@@ -44,6 +44,8 @@ export function createHttpApp(options: HttpAppOptions): Express {
     allowedHosts: [...new Set([publicUrl.hostname, "localhost", "127.0.0.1", "[::1]"])],
   });
 
+  app.disable("x-powered-by");
+
   const verifier =
     options.verifier ??
     new ErpTokenVerifier({ apiBaseUrl, resource: publicUrl, fetchImpl });
