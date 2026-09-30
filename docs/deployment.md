@@ -148,4 +148,15 @@ npx @modelcontextprotocol/inspector
 
 Im Browser als Transport **Streamable HTTP** wählen, URL `https://erp.fifty1.com/mcp` eintragen und über **Open Auth Settings → Quick OAuth Flow** anmelden. Danach **Connect** und unter **Tools → List Tools** die Tools abrufen. Der Inspector registriert sich dabei als eigener OAuth-Client beim ERP — genau wie claude.ai oder ChatGPT.
 
-Lokal lässt sich das ebenso gegen einen Entwicklungs-ERP prüfen, z.B. mit `MCP_PUBLIC_URL=http://localhost:3030/mcp` und `FIFTY1_API_BASE_URL=http://localhost:8080/api` (`npm run start:http`). Die Audience im ERP muss dann ebenfalls `http://localhost:3030/mcp` lauten.
+### Lokal gegen den Docker-Stack des ERP
+
+Der nginx des ERP-Docker-Stacks leitet `http://localhost:8080/mcp` an `host.docker.internal:3030` weiter – lokal liegt der MCP damit wie in Produktion unter der ERP-Adresse, und die Audience, die das ERP ableitet (`http://localhost:8080/mcp`), passt ohne weitere Konfiguration:
+
+```bash
+MCP_PUBLIC_URL=http://localhost:8080/mcp \
+FIFTY1_API_BASE_URL=http://localhost:8080/api \
+HOST=0.0.0.0 \
+npm run start:http
+```
+
+`HOST=0.0.0.0` ist nötig, weil der nginx-Container den Prozess über das Docker-Netz erreicht, nicht über `127.0.0.1` (der Port ist damit auch im lokalen Netz offen – nur für die Entwicklung). Im Inspector bzw. mit `claude mcp add --transport http fifty1-erp-local http://localhost:8080/mcp` dann `http://localhost:8080/mcp` verwenden. Ein `502` von nginx heißt: der Node-Prozess läuft nicht.
