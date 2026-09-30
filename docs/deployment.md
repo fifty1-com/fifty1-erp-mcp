@@ -8,7 +8,7 @@ Der Remote-Modus (`dist/http.js`) macht den MCP-Server unter `https://erp.fifty1
 Client (claude.ai, ChatGPT, …)
    │  HTTPS, Authorization: Bearer f51oa_…
    ▼
-Apache auf erp.fifty1.com  ── /mcp ──►  Node: 127.0.0.1:3030/mcp  (dieser Server)
+nginx auf erp.fifty1.com  ── /mcp ──►  Node: 127.0.0.1:3130/mcp  (dieser Server)
    │                                         │
    │  alles andere (PHP-ERP)                 │  GET /api/oauth/tokeninfo   (Token prüfen)
    ▼                                         │  /api/mcp/*                 (Tools, mit demselben Token)
@@ -26,7 +26,7 @@ ERP (public/api.php, OAuth-Server)  ◄────────┘
 |---|---|---|
 | `MCP_PUBLIC_URL` | ja | Öffentliche URL des Endpoints, z.B. `https://erp.fifty1.com/mcp`. Muss exakt der Audience entsprechen, die das ERP in die Tokens schreibt — sonst lehnt der Server jeden Token ab. `http` nur für `localhost`. |
 | `FIFTY1_API_BASE_URL` | ja | Basis-URL der ERP-API, z.B. `https://erp.fifty1.com/api`. |
-| `PORT` | nein | Standard `3030`. |
+| `PORT` | nein | Standard `3030`. **Auf fifty1-webserver `3130`** – dort belegt Grafana `127.0.0.1:3030`. |
 | `HOST` | nein | Standard `127.0.0.1`. Nicht ändern, solange Apache auf demselben Rechner läuft — der Port soll von außen nicht erreichbar sein. |
 
 Ein `FIFTY1_API_TOKEN` braucht der Remote-Modus nicht; jeder Nutzer bringt seinen eigenen OAuth-Token mit.
@@ -51,7 +51,7 @@ sudo chown -R root:fifty1-mcp /opt/fifty1-erp-mcp
 sudo tee /etc/fifty1-erp-mcp.env > /dev/null <<'ENV'
 MCP_PUBLIC_URL=https://erp.fifty1.com/mcp
 FIFTY1_API_BASE_URL=https://erp.fifty1.com/api
-PORT=3030
+PORT=3130
 HOST=127.0.0.1
 ENV
 sudo chmod 640 /etc/fifty1-erp-mcp.env
@@ -93,31 +93,39 @@ sudo systemctl restart fifty1-erp-mcp
 
 Laufende Tool-Aufrufe werden beim Neustart noch zu Ende geführt (bis zu 10 s); da der Server keine Sitzungen hält, merken die Clients davon nichts.
 
-## Apache in Plesk
+## Weiterleitung in Plesk (nginx)
 
-In Plesk unter **Websites & Domains → erp.fifty1.com → Apache & nginx Settings → Additional Apache directives → „Additional directives for HTTPS"**:
+In Plesk läuft nginx vor Apache. `/mcp` wird direkt in nginx an Node weitergereicht – so laufen die JSON-RPC-Anfragen nicht zusätzlich durch Apache und dessen ModSecurity-Regeln. In Plesk unter **Websites & Domains → erp.fifty1.com → Hosting & DNS → Apache & nginx Settings → „Additional nginx directives"**:
 
-```apache
-ProxyPreserveHost On
-ProxyPass /mcp http://127.0.0.1:3030/mcp
-ProxyPassReverse /mcp http://127.0.0.1:3030/mcp
+```nginx
+# Remote-MCP-Server (fifty1-erp-mcp, systemd-Dienst fifty1-erp-mcp, Port 3130).
+location = /mcp {
+    proxy_pass http://127.0.0.1:3130;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_buffering off;
+    proxy_read_timeout 120s;
+}
 ```
 
 Dazu:
 
-- **`ProxyPreserveHost On` ist Pflicht.** Der Server lässt zum Schutz vor DNS-Rebinding nur Anfragen mit dem Host aus `MCP_PUBLIC_URL` (sowie `localhost`/`127.0.0.1` für Prüfungen auf dem Server selbst) zu; ein fremder Host wird mit `403` abgewiesen. Ohne die Direktive schickt Apache immer `Host: 127.0.0.1:3030` weiter — die Prüfung liefe dann ins Leere.
-- **Der `Authorization`-Header wird von `mod_proxy` unverändert weitergereicht.** Anders als bei PHP über FastCGI ist dafür nichts zu konfigurieren.
-- Die Rewrite-Regeln des ERP in `.htaccess` greifen für `/mcp` nicht, weil `ProxyPass` die Anfrage vorher an Node übergibt — `/mcp` erreicht nie PHP. `ProxyPass` wirkt als Präfix: Sollte das ERP je eigene Pfade wie `/mcp-…` bekommen, stattdessen `ProxyPassMatch "^/mcp$" "http://127.0.0.1:3030/mcp"` verwenden.
-- Die Metadaten unter `/.well-known/oauth-protected-resource/mcp` und die API unter `/api/…` bleiben beim ERP — sie liegen nicht unter `/mcp`.
-- Läuft in Plesk nginx als Proxy vor Apache (Standard), reicht nginx `/mcp` an Apache weiter; es ist nichts zusätzlich nötig. Der Server antwortet mit einfachem JSON statt Server-Sent Events, Pufferung durch nginx stört also nicht.
-- Nur in den HTTPS-Direktiven eintragen: Über `http://` soll kein Bearer-Token übertragen werden.
+- **Nur über das Panel eintragen.** Plesk bindet eigene nginx-Direktiven nur ein, wenn sie dort gesetzt sind; die CLI (`plesk bin domain`) kennt dafür in Plesk Obsidian 18.0.80 keine Option, und die generierte `nginx.conf` wird bei jeder Neuerzeugung überschrieben.
+- **`proxy_set_header Host $host` ist Pflicht.** Der Server lässt zum Schutz vor DNS-Rebinding nur Anfragen mit dem Host aus `MCP_PUBLIC_URL` (sowie `localhost`/`127.0.0.1` für Prüfungen auf dem Server selbst) zu; ohne die Zeile käme `127.0.0.1` an und die Prüfung liefe ins Leere.
+- `location = /mcp` trifft genau diesen Pfad; der `Authorization`-Header wird von nginx unverändert weitergereicht.
+- Die Metadaten unter `/.well-known/oauth-protected-resource/mcp` und die API unter `/api/…` bleiben beim ERP (Apache/PHP) – sie liegen nicht unter `/mcp`.
+- Der Server antwortet mit einfachem JSON statt Server-Sent Events; `proxy_buffering off` schadet trotzdem nicht.
+
+**Alternative ohne nginx** (reiner Apache): unter „Additional directives for HTTPS" `ProxyPreserveHost On`, `ProxyPass /mcp http://127.0.0.1:3130/mcp` und `ProxyPassReverse /mcp http://127.0.0.1:3130/mcp`.
 
 ## Prüfen
 
 Auf dem Server selbst:
 
 ```bash
-curl -s http://127.0.0.1:3030/healthz
+curl -s http://127.0.0.1:3130/healthz
 # {"status":"ok"}
 ```
 
