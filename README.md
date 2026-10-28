@@ -126,7 +126,8 @@ Dann in der Konfiguration `"command": "node"` und `"args": ["/absoluter/pfad/zu/
 ### Kunden, Rechnungen, Stammdaten
 | Tool | Zweck |
 |---|---|
-| `list_customers` / `get_customer` / `create_customer` / `update_customer` | CRM |
+| `list_customers` / `get_customer` / `create_customer` / `update_customer` | CRM (Kunden-Detail inkl. Tags der Ansprechpersonen) |
+| `list_contacts` | Ansprechpersonen nach Tag inkl. Firma und Adresse (z.B. Versandliste) |
 | `list_invoices` / `get_invoice` / `update_invoice_status` | Rechnungen (Statuswechsel nur für AR) |
 | `list_time_entries` | Zeiteinträge über alle Mitarbeiter |
 | `list_employees` / `list_cost_centers` | Stammdaten |
