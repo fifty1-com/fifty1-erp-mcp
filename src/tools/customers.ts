@@ -48,7 +48,7 @@ export function registerCustomerTools(server: McpServer, client: ErpClient): voi
     "get_customer",
     {
       title: "Kunden-Detail",
-      description: "Kundendaten inkl. aller Ansprechpersonen.",
+      description: "Kundendaten inkl. Kunden-Tags und aller Ansprechpersonen (mit deren Tags und Notizen).",
       inputSchema: { customer_id: z.number().int().positive() },
     },
     guard(async ({ customer_id }) => {
@@ -58,6 +58,28 @@ export function registerCustomerTools(server: McpServer, client: ErpClient): voi
         `${customer.company} (${customer.contacts.length} Ansprechperson(en))`,
         customer,
       );
+    }),
+  );
+
+  server.registerTool(
+    "list_contacts",
+    {
+      title: "Ansprechpersonen nach Tag",
+      description:
+        "Alle Ansprechpersonen mit einem Tag (z.B. \"Xmas-Karte\"), jeweils mit Firma und Firmenadresse " +
+        "(Straße, PLZ, Ort, Land) — etwa als Versandliste für Karten und Geschenke. " +
+        "tag (Name, Groß-/Kleinschreibung egal) oder tag_id ist erforderlich; ein unbekannter Tag liefert einen Fehler.",
+      inputSchema: {
+        tag: z.string().min(1).optional().describe("Tag-Name"),
+        tag_id: z.number().int().positive().optional().describe("Tag-ID, hat Vorrang vor tag"),
+        q: z.string().optional().describe("Freitextsuche in Name und E-Mail"),
+        ...pagination,
+      },
+    },
+    guard(async (args) => {
+      const data = await client.get<ListEnvelope<unknown>>("/contacts", args);
+
+      return toolResult(summarizeList(data, "Ansprechpersonen"), data);
     }),
   );
 

@@ -32,6 +32,35 @@ describe("customer tools", () => {
     expect(text).toContain("ACME GmbH (2 Ansprechperson(en))");
   });
 
+  it("lists contacts by tag name", async () => {
+    ctx.erp.reply(emptyList());
+
+    await ctx.client.callTool({ name: "list_contacts", arguments: { tag: "Xmas-Karte", limit: 200 } });
+
+    const url = new URL(ctx.erp.requests[0].url);
+    expect(url.pathname).toBe("/api/contacts");
+    expect(url.searchParams.get("tag")).toBe("Xmas-Karte");
+    expect(url.searchParams.get("limit")).toBe("200");
+  });
+
+  it("lists contacts by tag id", async () => {
+    ctx.erp.reply(emptyList());
+
+    await ctx.client.callTool({ name: "list_contacts", arguments: { tag_id: 12 } });
+
+    expect(new URL(ctx.erp.requests[0].url).searchParams.get("tag_id")).toBe("12");
+  });
+
+  it("summarizes the contact list", async () => {
+    ctx.erp.reply({ items: [{ id: 1 }, { id: 2 }], total: 2, returned: 2, limit: 25, offset: 0, has_more: false });
+
+    const text = resultText(
+      await ctx.client.callTool({ name: "list_contacts", arguments: { tag: "Xmas-Karte" } }),
+    );
+
+    expect(text).toBe("2 Ansprechpersonen.");
+  });
+
   it("makes a dedup hit unmistakable", async () => {
     ctx.erp.reply({ customer_matched: true, customer: { id: 89, company: "ACME GmbH" } });
 
