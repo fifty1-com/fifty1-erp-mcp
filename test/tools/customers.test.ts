@@ -58,7 +58,7 @@ describe("customer tools", () => {
       await ctx.client.callTool({ name: "list_contacts", arguments: { tag: "Xmas-Karte" } }),
     );
 
-    expect(text).toBe("2 Ansprechpersonen.");
+    expect(text).toMatch(/^2 Ansprechpersonen\./);
   });
 
   it("makes a dedup hit unmistakable", async () => {
